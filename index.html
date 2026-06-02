@@ -188,13 +188,21 @@
                     </h3>
                     <p class="text-sm text-slate-500">วิเคราะห์ข้อมูล ให้แนวทางมาตรการ และตอบคำถามความยั่งยืนสำหรับ ธปท. โดยอ้างอิงข้อมูลแดชบอร์ดด้านบน</p>
                 </div>
-                <div class="flex gap-2 bg-slate-100 p-1 rounded-lg">
-                    <button id="aiTab1Btn" onclick="switchAiTab(1)" class="px-3 py-1.5 text-xs font-semibold rounded-md bg-white text-emerald-800 shadow-sm transition-all flex items-center gap-1">
-                        <i data-lucide="file-text" class="h-3.5 w-3.5"></i> รายงานวิเคราะห์ผู้บริหาร
-                    </button>
-                    <button id="aiTab2Btn" onclick="switchAiTab(2)" class="px-3 py-1.5 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-800 transition-all flex items-center gap-1">
-                        <i data-lucide="messages-square" class="h-3.5 w-3.5"></i> แชทสอบถาม AI
-                    </button>
+                <div class="flex flex-col items-end gap-3">
+                    <!-- ✨ เพิ่มช่องใส่ API Key สำหรับรันแบบ Local (ออฟไลน์) -->
+                    <div class="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 w-full md:w-auto shadow-inner">
+                        <i data-lucide="key" class="h-4 w-4 text-slate-400"></i>
+                        <input type="password" id="geminiApiKey" placeholder="วาง API Key ที่นี่ (รัน Local)" title="จำเป็นต้องใส่ API Key ของคุณเองเมื่อดาวน์โหลดไฟล์ไปเปิดในเครื่องส่วนตัว" class="text-xs bg-transparent border-none outline-none w-48 text-slate-700 placeholder:text-slate-400">
+                    </div>
+                    
+                    <div class="flex gap-2 bg-slate-100 p-1 rounded-lg">
+                        <button id="aiTab1Btn" onclick="switchAiTab(1)" class="px-3 py-1.5 text-xs font-semibold rounded-md bg-white text-emerald-800 shadow-sm transition-all flex items-center gap-1">
+                            <i data-lucide="file-text" class="h-3.5 w-3.5"></i> รายงานวิเคราะห์ผู้บริหาร
+                        </button>
+                        <button id="aiTab2Btn" onclick="switchAiTab(2)" class="px-3 py-1.5 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-800 transition-all flex items-center gap-1">
+                            <i data-lucide="messages-square" class="h-3.5 w-3.5"></i> แชทสอบถาม AI
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -488,8 +496,8 @@
 
         const POPULATION_BY_STRUCTURE = {
             'สำนักงานใหญ่': 2520,
-            'ศูนย์จัดการธนบัตร': 116,
-            'โรงพิมพ์ธนบัตร': 228,
+            'ศูนย์จัดการธนบัตร': 55,
+            'โรงพิมพ์ธนบัตร': 173,
             'สำนักงานภาคเหนือ': 54,
             'สำนักงานภาคตะวันออกเฉียงเหนือ': 48,
             'สำนักงานภาคใต้': 45,
@@ -1099,7 +1107,17 @@
 
         const callGemini = async (systemPrompt, userPrompt, onSuccess, onError) => {
             const apiKey = ""; 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            // ดึงค่า API Key จากช่องที่ผู้ใช้กรอก หากไม่มีให้ใช้ค่าเริ่มต้นของระบบ
+            const localApiKey = document.getElementById('geminiApiKey')?.value.trim();
+            const finalKey = localApiKey || apiKey;
+
+            // ตรวจสอบและแจ้งเตือนหากไม่ได้ใส่ Key ตอนรัน Local
+            if (!finalKey) {
+                onError("❌ HTTP 403: ไม่พบ API Key! หากเปิดไฟล์นี้ในเครื่องของคุณเอง กรุณาวาง Gemini API Key ในช่องมุมขวาบนของหน้าจอก่อนครับ");
+                return;
+            }
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${finalKey}`;
             
             const payload = {
                 contents: [{ parts: [{ text: userPrompt }] }],
@@ -1114,7 +1132,18 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    
+                    if (!response.ok) {
+                        // ดักจับ Error 403 ให้ชัดเจนขึ้น
+                        if (response.status === 403) {
+                            throw new Error("HTTP 403 (Forbidden): API Key ไม่ถูกต้อง หรือระบบไม่อนุญาตให้เข้าถึง กรุณาตรวจสอบ Key ของคุณใหม่อีกครั้ง");
+                        }
+                        if (response.status === 400) {
+                            throw new Error("HTTP 400 (Bad Request): โครงสร้างข้อมูลที่ส่งไปไม่ถูกต้อง");
+                        }
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
                     const result = await response.json();
                     const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
                     if (text) {
@@ -1124,7 +1153,8 @@
                         throw new Error("ระบบประมวลผลไม่พบผลลัพธ์คำตอบจากโมเดล");
                     }
                 } catch (err) {
-                    if (i === 4) {
+                    // หากเป็น Error เรื่องสิทธิ์ (403) ไม่ต้องวนซ้ำให้หยุดทันที
+                    if (i === 4 || err.message.includes("403") || err.message.includes("400")) {
                         onError(err.message || "เกิดปัญหาขัดข้องชั่วคราวในการติดต่อ API");
                         return;
                     }
