@@ -1117,7 +1117,8 @@
                 return;
             }
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${finalKey}`;
+            // ใชัโมเดล gemini-1.5-flash ซึ่งเป็นโมเดลล่าสุดที่เสถียรและรองรับ API Key ทั่วไป 100%
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${finalKey}`;
             
             const payload = {
                 contents: [{ parts: [{ text: userPrompt }] }],
