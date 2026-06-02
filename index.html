@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GHG Scope 3: Employee Commuting Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Sarabun', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 p-6 text-slate-800" onclick="closeAllDropdowns(event)">
+
+    <div class="max-w-7xl mx-auto space-y-6 relative">
+        
+        <!-- Header Section -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <div>
+                <h1 class="text-2xl font-bold text-emerald-700 flex items-center gap-2">
+                    <i data-lucide="leaf" class="h-7 w-7 text-emerald-600"></i>
+                    GHG Scope 3: Employee Commuting Dashboard
+                </h1>
+                <div class="text-slate-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                    <span>ระบบประมวลผลก๊าซเรือนกระจกโดยอ้างอิงค่าจากฐานข้อมูลจริง ธปท. ปี 2568</span>
+                    <span class="text-slate-300 hidden sm:inline">|</span>
+                    <span class="text-emerald-700 font-medium flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full text-xs border border-emerald-100">
+                        <i data-lucide="user" class="h-3 w-3"></i> จัดทำโดย: Khanitchan Mookleemas
+                    </span>
+                    <!-- ปุ่ม Changelog -->
+                    <button onclick="openChangelogModal()" class="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-full text-xs border border-blue-200 transition-colors cursor-pointer ml-1">
+                        <i data-lucide="history" class="h-3 w-3"></i> ประวัติการอัปเดต (Changelog)
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-4 md:mt-0 flex items-center gap-4">
+                <label class="cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow transition-colors flex items-center gap-2 text-sm font-medium">
+                    <i data-lucide="upload" class="h-4 w-4"></i>
+                    อัปโหลดไฟล์ CSV (กรณีออฟไลน์)
+                    <input type="file" id="fileUpload" accept=".csv" class="hidden" />
+                </label>
+            </div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-4">
+            <div class="flex flex-wrap gap-6 items-center">
+                <div class="flex items-center gap-2 text-slate-600 font-medium w-full md:w-auto">
+                    <i data-lucide="filter" class="h-5 w-5 text-slate-500"></i>
+                    <span>ตัวกรองข้อมูล:</span>
+                </div>
+                
+                <div class="relative flex flex-col w-full md:w-72">
+                    <label class="text-xs text-slate-500 mb-1">1. โครงสร้างองค์กร</label>
+                    <div class="relative">
+                        <button type="button" onclick="toggleDropdown('structDropdown', event)" class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg p-2.5 text-left flex justify-between items-center focus:ring-emerald-500 focus:border-emerald-500">
+                            <span id="structDropdownLabel" class="truncate">เลือกโครงสร้าง...</span>
+                            <i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i>
+                        </button>
+                        <div id="structDropdown" class="hidden absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                            <div id="structList" class="space-y-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative flex flex-col w-full md:w-72">
+                    <label class="text-xs text-slate-500 mb-1">2. สถานที่ทำงาน</label>
+                    <div class="relative">
+                        <button type="button" onclick="toggleDropdown('workplaceDropdown', event)" class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg p-2.5 text-left flex justify-between items-center focus:ring-emerald-500 focus:border-emerald-500">
+                            <span id="workplaceDropdownLabel" class="truncate">เลือกสถานที่ทำงาน...</span>
+                            <i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i>
+                        </button>
+                        <div id="workplaceDropdown" class="hidden absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto custom-scrollbar p-2">
+                            <div id="workplaceList" class="space-y-1"></div>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="clearFilters()" class="mt-4 md:mt-5 text-sm text-emerald-600 hover:text-emerald-800 underline">ล้างตัวกรองทั้งหมด</button>
+            </div>
+
+            <!-- Active Filters Badge Panel Block -->
+            <div id="activeFiltersPanel" class="hidden border-t border-slate-100 pt-3 flex flex-wrap gap-2 items-center">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-2 flex items-center gap-1">
+                    <i data-lucide="check-square" class="h-3.5 w-3.5"></i> รายการที่เลือกอยู่:
+                </span>
+                <div id="activeFiltersList" class="flex flex-wrap gap-1.5 items-center">
+                    <!-- Badges will be generated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Highlight KPIs (Survey vs Upscale) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Actual Survey KPI -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-l-blue-500 border border-slate-100 flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-slate-500 font-medium flex items-center gap-2"><i data-lucide="clipboard-check" class="h-4 w-4 text-blue-500"></i> GHG จาก Google Sheet (Survey Data)</p>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <p class="text-3xl font-bold text-slate-800" id="kpi-survey-emissions">0</p>
+                        <span class="text-sm text-slate-500">TonCO2e</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1">จากข้อมูลทั้งหมด <span id="kpi-survey-records" class="font-bold text-blue-600">0</span> รายการ</p>
+                </div>
+                <div class="p-4 bg-blue-50 text-blue-500 rounded-full hidden md:block">
+                    <i data-lucide="pie-chart" class="h-8 w-8"></i>
+                </div>
+            </div>
+
+            <!-- Upscaled KPI -->
+            <div class="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-2xl shadow-md text-white flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-emerald-50 flex items-center gap-2"><i data-lucide="globe" class="h-4 w-4"></i> GHG คาดการณ์ทั้งองค์กร (Upscaled Total)</p>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <p class="text-4xl font-bold" id="kpi-upscaled-emissions">0</p>
+                        <span class="text-sm text-emerald-100">TonCO2e</span>
+                    </div>
+                    <p class="text-xs text-emerald-100 mt-1">ขยายสัดส่วนเทียบพนักงานทั้งหมด <span id="kpi-total-population" class="font-bold text-white">0</span> คน</p>
+                </div>
+                <div class="p-4 bg-white/20 rounded-full hidden md:block">
+                    <i data-lucide="trending-up" class="h-8 w-8"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upscale Calculation Table -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <i data-lucide="calculator" class="h-5 w-5 text-emerald-600"></i>
+                ข้อมูลการคำนวณขยายสัดส่วน (Upscale) แยกตามสถานที่ทำงาน
+            </h3>
+            <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                <table class="w-full text-sm text-left text-slate-500">
+                    <thead class="text-xs text-slate-700 bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th class="px-4 py-3">สถานที่ทำงาน</th>
+                            <th class="px-4 py-3 text-right">พนักงานจริง (คน)</th>
+                            <th class="px-4 py-3 text-right">ตอบแบบสอบถาม (คน)</th>
+                            <th class="px-4 py-3 text-right">Response Rate</th>
+                            <th class="px-4 py-3 text-right">ตัวคูณ (Multiplier)</th>
+                            <th class="px-4 py-3 text-right text-blue-600 font-bold">GHG สำรวจได้ (TonCo2e)</th>
+                            <th class="px-4 py-3 text-right text-emerald-600 font-bold">GHG คาดการณ์ (TonCo2e)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="upscaleTableBody">
+                        <tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">กำลังรอข้อมูล...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-xs text-slate-400 mt-3">* คุณสามารถตั้งค่า "พนักงานจริง" ของแต่ละสถานที่ทำงานได้ใน Source Code ตัวแปร <code>POPULATION_BY_STRUCTURE</code></p>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                <div class="flex justify-between items-start mb-4 gap-2">
+                    <h3 class="text-lg font-bold text-slate-700">ปริมาณก๊าซเรือนกระจก (จากแบบสอบถาม)</h3>
+                    <select id="chartViewToggle" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 p-2 outline-none">
+                        <option value="vehicle">1. แยกตามประเภทพาหนะ</option>
+                        <option value="scope3">2. ประเมินเชื้อเพลิง (CFO Scope 3)</option>
+                    </select>
+                </div>
+                <div class="relative h-80 w-full flex-grow">
+                    <canvas id="vehicleChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="text-lg font-bold text-slate-700 mb-4">สัดส่วนการปล่อยก๊าซเรือนกระจก แยกตามสถานที่ทำงาน</h3>
+                <div class="relative h-80 w-full">
+                    <canvas id="workplaceChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ✨ Gemini AI Assistant & Analysis Panel -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 ring-4 ring-emerald-500/5 space-y-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-100 pb-4 gap-4">
+                <div>
+                    <h3 class="text-lg font-bold text-emerald-800 flex items-center gap-2">
+                        <i data-lucide="sparkles" class="h-6 w-6 text-emerald-500"></i>
+                        ผู้ช่วยวิเคราะห์ข้อมูลอัจฉริยะด้วย AI (Powered by Gemini 2.5)
+                    </h3>
+                    <p class="text-sm text-slate-500">วิเคราะห์ข้อมูล ให้แนวทางมาตรการ และตอบคำถามความยั่งยืนสำหรับ ธปท. โดยอ้างอิงข้อมูลแดชบอร์ดด้านบน</p>
+                </div>
+                <div class="flex gap-2 bg-slate-100 p-1 rounded-lg">
+                    <button id="aiTab1Btn" onclick="switchAiTab(1)" class="px-3 py-1.5 text-xs font-semibold rounded-md bg-white text-emerald-800 shadow-sm transition-all flex items-center gap-1">
+                        <i data-lucide="file-text" class="h-3.5 w-3.5"></i> รายงานวิเคราะห์ผู้บริหาร
+                    </button>
+                    <button id="aiTab2Btn" onclick="switchAiTab(2)" class="px-3 py-1.5 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-800 transition-all flex items-center gap-1">
+                        <i data-lucide="messages-square" class="h-3.5 w-3.5"></i> แชทสอบถาม AI
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 1: AI Executive Summary -->
+            <div id="aiTab1" class="space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-4 bg-emerald-50/50 p-4 rounded-xl border border-emerald-100/50">
+                    <div class="text-sm text-emerald-950">
+                        <p class="font-semibold">✨ ดำเนินการวิเคราะห์ตามตัวกรองปัจจุบัน</p>
+                        <p class="text-xs text-slate-500 mt-0.5">ระบบจะนำสถิติตามตัวกรองโครงสร้าง/สถานที่ทำงานด้านบนมาคำนวณและสร้างรายงานแนะนำเฉพาะจุด</p>
+                    </div>
+                    <button onclick="generateAiSummary()" id="btnGenerateSummary" class="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-medium text-sm px-5 py-2.5 rounded-lg shadow-sm flex items-center gap-2 transition-all">
+                        <i data-lucide="wand2" class="h-4 w-4"></i>
+                        <span>✨ วิเคราะห์สรุปผู้บริหารด้วย AI</span>
+                    </button>
+                </div>
+
+                <!-- AI Output Box -->
+                <div id="aiSummaryOutputWrapper" class="hidden border border-slate-200 rounded-xl bg-slate-50/50 p-6 space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                        <span class="text-xs font-semibold text-emerald-800 tracking-wider uppercase flex items-center gap-1">
+                            <i data-lucide="cpu" class="h-4 w-4"></i> ผลลัพธ์การประมวลผลจาก Gemini
+                        </span>
+                        <button onclick="copyToClipboard('aiSummaryOutput')" class="text-xs text-slate-500 hover:text-emerald-700 flex items-center gap-1 transition-all">
+                            <i data-lucide="copy" class="h-3.5 w-3.5"></i> คัดลอกรายงาน
+                        </button>
+                    </div>
+                    <!-- Typing / Loading state container -->
+                    <div id="aiSummaryLoader" class="hidden py-8 flex flex-col items-center justify-center gap-3">
+                        <div class="flex space-x-2">
+                            <div class="w-3 h-3 bg-emerald-600 rounded-full animate-bounce" style="animation-delay: -0.3s"></div>
+                            <div class="w-3 h-3 bg-emerald-600 rounded-full animate-bounce" style="animation-delay: -0.15s"></div>
+                            <div class="w-3 h-3 bg-emerald-600 rounded-full animate-bounce"></div>
+                        </div>
+                        <p class="text-sm text-slate-500 animate-pulse">Gemini กำลังประมวลผลข้อมูลและวางกรอบมาตรการ กรุณารอสักครู่...</p>
+                    </div>
+                    <!-- Error message container -->
+                    <div id="aiSummaryError" class="hidden p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-sm flex items-center gap-2">
+                        <i data-lucide="alert-circle" class="h-5 w-5 text-rose-600 flex-shrink-0"></i>
+                        <span id="aiSummaryErrorText">เกิดข้อผิดพลาดในการเชื่อมต่อ</span>
+                    </div>
+                    <!-- Final report output -->
+                    <div id="aiSummaryOutput" class="text-sm leading-relaxed text-slate-700 space-y-2 prose max-w-none">
+                        <!-- Generated Markdown HTML will go here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: AI Sustainability Chat -->
+            <div id="aiTab2" class="hidden space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Suggested Prompts Sidebar -->
+                    <div class="space-y-2">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">คำถามแนะนำด่วน</p>
+                        <button onclick="sendQuickQuestion('ช่วยแนะนำไอเดียแคมเปญส่งเสริม Carpool สำหรับพนักงานสะท้อนความต้องการตามสถานที่ทำงาน ธปท.')" class="w-full text-left p-2.5 text-xs text-slate-600 hover:text-emerald-950 bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-200 rounded-lg transition-all flex items-start gap-1.5">
+                            <i data-lucide="help-circle" class="h-3.5 w-3.5 mt-0.5 text-emerald-500 flex-shrink-0"></i>
+                            <span>✨ ขอแนวทางการสนับสนุน Carpool รายสถานที่ทำงาน</span>
+                        </button>
+                        <button onclick="sendQuickQuestion('วิธีผลักดันให้โรงพิมพ์ธนบัตร และสำนักงานภาคต่างๆ ลดการพึ่งพารถยนต์ส่วนตัวมาทำงาน')" class="w-full text-left p-2.5 text-xs text-slate-600 hover:text-emerald-950 bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-200 rounded-lg transition-all flex items-start gap-1.5">
+                            <i data-lucide="help-circle" class="h-3.5 w-3.5 mt-0.5 text-emerald-500 flex-shrink-0"></i>
+                            <span>✨ มาตรการสำหรับโรงพิมพ์ธนบัตรและภาคส่วนภูมิภาค</span>
+                        </button>
+                        <button onclick="sendQuickQuestion('การประเมิน CFO Scope 3 Category 7 ของพนักงาน ธปท. อิงตามสถานที่ทำงาน มีวิธีการอัปเดตสถิติและขยายตัวคูณอย่างไร')" class="w-full text-left p-2.5 text-xs text-slate-600 hover:text-emerald-950 bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-200 rounded-lg transition-all flex items-start gap-1.5">
+                            <i data-lucide="help-circle" class="h-3.5 w-3.5 mt-0.5 text-emerald-500 flex-shrink-0"></i>
+                            <span>✨ อธิบายสูตรขยายสัดส่วนตามสถานที่จริง</span>
+                        </button>
+                    </div>
+
+                    <!-- Chat Window (2/3 width) -->
+                    <div class="md:col-span-2 border border-slate-200 rounded-xl flex flex-col h-[400px] bg-slate-50/30">
+                        <!-- Message list -->
+                        <div id="chatMessageList" class="flex-grow p-4 overflow-y-auto custom-scrollbar space-y-4">
+                            <div class="flex items-start gap-2.5">
+                                <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-700">
+                                    <i data-lucide="bot" class="h-4 w-4"></i>
+                                </div>
+                                <div class="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-sm text-slate-700 max-w-[85%]">
+                                    <p>สวัสดีครับ! ผมเป็นผู้ช่วย AI ด้านการลดคาร์บอนฟุตพริ้นท์ประจำ ธปท. ยินดีให้คำปรึกษา แนะนำแคมเปญรณรงค์รักษ์โลก หรือตอบข้อสงสัยเกี่ยวกับการประเมิน CFO Scope 3 แยกตามสถานที่ทำงานจริงได้เลยครับ 😊</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Typing state indicator -->
+                        <div id="chatTypingIndicator" class="hidden px-4 py-2 flex items-center gap-2 bg-slate-100/30 border-t border-slate-100">
+                            <div class="flex space-x-1.5">
+                                <div class="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style="animation-delay: -0.3s"></div>
+                                <div class="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style="animation-delay: -0.15s"></div>
+                                <div class="w-2 h-2 bg-emerald-500 rounded-full animate-bounce"></div>
+                            </div>
+                            <span class="text-xs text-slate-400">AI กำลังเขียนข้อความตอบกลับ...</span>
+                        </div>
+
+                        <!-- Chat Input bar -->
+                        <div class="p-3 bg-white border-t border-slate-200 flex gap-2 rounded-b-xl">
+                            <input type="text" id="chatInput" placeholder="พิมพ์คำถามของคุณที่นี่..." onkeydown="if(event.key === 'Enter') sendChatMessage()" class="flex-grow bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg px-3 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                            <button onclick="sendChatMessage()" id="btnSendChat" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5">
+                                <span>✨ ส่ง</span>
+                                <i data-lucide="send" class="h-3.5 w-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Toast notification modal for copying -->
+            <div id="toastNotification" class="hidden fixed bottom-6 right-6 z-50 bg-emerald-800 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-bounce">
+                <i data-lucide="check-circle" class="h-5 w-5 text-emerald-300"></i>
+                <span id="toastMessage" class="text-sm font-medium">คัดลอกข้อมูลสำเร็จ!</span>
+            </div>
+        </div>
+
+        <!-- Data Table Section -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
+            <h3 class="text-lg font-bold text-slate-700 mb-4">ตารางข้อมูลรายการเดินทางทั้งหมด (Raw Data)</h3>
+            <div class="overflow-x-auto h-96 border border-slate-200 rounded-lg custom-scrollbar">
+                <table class="w-full text-sm text-left text-slate-500">
+                    <thead class="text-xs text-slate-700 uppercase bg-slate-100 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th class="px-4 py-3">โครงสร้าง</th>
+                            <th class="px-4 py-3">สถานที่ทำงาน</th>
+                            <th class="px-4 py-3">ประเภทพาหนะ</th>
+                            <th class="px-4 py-3">ประเภทเชื้อเพลิง</th>
+                            <th class="px-4 py-3 text-right">ค่า EF (จากไฟล์)</th>
+                            <th class="px-4 py-3 text-right">ระยะทาง (km)</th>
+                            <th class="px-4 py-3 text-right">ก๊าซ (TonCO2e)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody">
+                        <tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">กำลังรอข้อมูล...</td></tr>
+                    </tbody>
+                </table>
+                <div id="noDataMessage" class="hidden text-center py-10 text-slate-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>
+            </div>
+        </div>
+
+        <!-- Footer Section with Credit -->
+        <div class="text-center text-xs text-slate-400 py-6 border-t border-slate-200/70 flex flex-col sm:flex-row items-center justify-center gap-1.5 pb-10">
+            <span class="flex items-center gap-1 justify-center">
+                <i data-lucide="shield-check" class="h-3.5 w-3.5 text-emerald-600"></i>
+                ระบบประเมินก๊าซเรือนกระจกประเภทที่ 3 Cat.7 (ธปท.)
+            </span>
+            <span class="text-slate-300 hidden sm:inline">•</span>
+            <span class="flex items-center gap-1 justify-center">
+                <i data-lucide="terminal" class="h-3.5 w-3.5 text-slate-400"></i>
+                จัดทำโดย <strong class="text-slate-600">Khanitchan Mookleemas</strong>
+            </span>
+        </div>
+
+    </div>
+
+    <!-- Changelog Modal -->
+    <div id="changelogModal" class="hidden fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i data-lucide="history" class="h-5 w-5 text-blue-500"></i> ประวัติการอัปเดตระบบ (Changelog)
+                </h3>
+                <button onclick="closeChangelogModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <i data-lucide="x" class="h-5 w-5"></i>
+                </button>
+            </div>
+            
+            <!-- Body: List -->
+            <div id="changelogList" class="p-6 overflow-y-auto flex-grow space-y-6">
+                <!-- Data will be populated here -->
+            </div>
+            
+            <!-- Body: Add Form (Hidden by default) -->
+            <div id="changelogForm" class="hidden p-6 border-t border-slate-100 bg-slate-50 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h4 class="font-bold text-slate-700 text-sm flex items-center gap-1">
+                        <i data-lucide="edit-3" class="h-4 w-4 text-emerald-600"></i> เพิ่มประวัติการอัปเดต (สำหรับผู้ดูแลระบบ)
+                    </h4>
+                </div>
+                
+                <div id="clError" class="hidden text-xs text-red-500 bg-red-50 p-2 rounded border border-red-100">กรุณากรอกข้อมูลให้ครบถ้วน</div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="text" id="clVersion" placeholder="เวอร์ชัน (เช่น V.1.0)" class="px-3 py-2 border border-slate-200 rounded-lg text-sm w-full outline-none focus:border-blue-500 transition-colors">
+                    <input type="date" id="clDate" class="px-3 py-2 border border-slate-200 rounded-lg text-sm w-full outline-none focus:border-blue-500 transition-colors">
+                </div>
+                <textarea id="clDetails" rows="3" placeholder="รายละเอียดการอัปเดต..." class="px-3 py-2 border border-slate-200 rounded-lg text-sm w-full outline-none focus:border-blue-500 transition-colors"></textarea>
+                
+                <div class="flex justify-end gap-2 pt-2">
+                    <button onclick="toggleChangelogForm()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">ยกเลิก</button>
+                    <button onclick="saveChangelog()" class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-all flex items-center gap-1">
+                        <i data-lucide="save" class="h-4 w-4"></i> บันทึกข้อมูล
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="px-6 py-4 border-t border-slate-100 flex justify-between items-center bg-white">
+                <button onclick="toggleChangelogForm()" class="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors">
+                    <i data-lucide="plus-circle" class="h-4 w-4"></i> เพิ่มข้อมูลอัปเดต (Admin)
+                </button>
+                <button onclick="closeChangelogModal()" class="px-5 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors">ปิดหน้าต่าง</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        lucide.createIcons();
+
+        // ==========================================
+        // 🌐 การเชื่อมต่อ Google Apps Script (ตั้งค่า URL ที่นี่)
+        // ==========================================
+        // นำ Web App URL ที่ได้จาก Google Apps Script มาวางในเครื่องหมายคำพูดด้านล่าง
+        const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmAdXfwsWo--ZxyDgIGy2ODLxjeRq8N-vpKRggY8mHjz9hsR6uDsVDhAt-4YFvlJlvQw/exec"; 
+
+        // ==========================================
+        // 📜 CHANGELOG LOGIC
+        // ==========================================
+        let changelogData = [
+            { version: "V.0", date: "2026-05-27", details: "เริ่มต้นใช้งานระบบประเมินก๊าซเรือนกระจกประเภทที่ 3 (CFO Scope 3) พร้อมนำเข้าข้อมูลการประเมิน ธปท. ประจำปี 2568" }
+        ];
+
+        const loadChangelog = () => {
+            const saved = localStorage.getItem('ghg_changelog');
+            if (saved) {
+                changelogData = JSON.parse(saved);
+            }
+            renderChangelog();
+        };
+
+        const renderChangelog = () => {
+            const list = document.getElementById('changelogList');
+            if(!list) return;
+            
+            const sortedData = [...changelogData].reverse();
+            
+            list.innerHTML = sortedData.map((log, index) => `
+                <div class="relative pl-6 border-l-2 ${index === 0 ? 'border-blue-200' : 'border-slate-200'} pb-2">
+                    <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full ${index === 0 ? 'bg-blue-500' : 'bg-slate-300'} border-4 border-white"></div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="font-bold ${index === 0 ? 'text-blue-700' : 'text-slate-700'}">${log.version}</span>
+                        <span class="text-xs text-slate-400 font-medium">${log.date}</span>
+                    </div>
+                    <p class="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">${log.details}</p>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        };
+
+        const openChangelogModal = () => {
+            document.getElementById('changelogModal').classList.remove('hidden');
+            loadChangelog(); 
+        };
+
+        const closeChangelogModal = () => {
+            document.getElementById('changelogModal').classList.add('hidden');
+            document.getElementById('changelogForm').classList.add('hidden'); 
+            document.getElementById('clError').classList.add('hidden');
+        };
+
+        const toggleChangelogForm = () => {
+            const form = document.getElementById('changelogForm');
+            form.classList.toggle('hidden');
+            if(!form.classList.contains('hidden')) {
+                document.getElementById('clDate').valueAsDate = new Date();
+                document.getElementById('clError').classList.add('hidden');
+            }
+        };
+
+        const saveChangelog = () => {
+            const version = document.getElementById('clVersion').value.trim();
+            const date = document.getElementById('clDate').value;
+            const details = document.getElementById('clDetails').value.trim();
+            const errorMsg = document.getElementById('clError');
+            
+            if(!version || !date || !details) {
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+            
+            errorMsg.classList.add('hidden');
+            changelogData.push({ version, date, details });
+            localStorage.setItem('ghg_changelog', JSON.stringify(changelogData));
+            
+            document.getElementById('clVersion').value = '';
+            document.getElementById('clDetails').value = '';
+            
+            toggleChangelogForm();
+            renderChangelog();
+        };
+
+        // ==========================================
+        // 📊 DASHBOARD LOGIC
+        // ==========================================
+
+        const POPULATION_BY_STRUCTURE = {
+            'สำนักงานใหญ่': 2520,
+            'ศูนย์จัดการธนบัตร': 116,
+            'โรงพิมพ์ธนบัตร': 228,
+            'สำนักงานภาคเหนือ': 54,
+            'สำนักงานภาคตะวันออกเฉียงเหนือ': 48,
+            'สำนักงานภาคใต้': 45,
+        };
+
+        const CHART_COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#14B8A6', '#F43F5E'];
+
+        let rawData = [];
+        let filteredData = [];
+        let selectedStructures = [];
+        let selectedWorkplaces = []; 
+        let vehicleChartInstance = null;
+        let workplaceChartInstance = null; 
+        
+        let aiChatHistory = [];
+
+        const getStructurePopulation = (structName) => {
+            if (!structName) return 0;
+            const cleanName = structName.trim().replace(/[\s\u200B-\u200D\uFEFF]/g, '');
+            
+            for (const key in POPULATION_BY_STRUCTURE) {
+                const cleanKey = key.trim().replace(/[\s\u200B-\u200D\uFEFF]/g, '');
+                if (cleanName === cleanKey || cleanName.includes(cleanKey) || cleanKey.includes(cleanName)) {
+                    return POPULATION_BY_STRUCTURE[key];
+                }
+            }
+            
+            if (cleanName.includes('โครงสร้างพื้นฐาน') || cleanName.includes('ชำระเงิน') || cleanName.includes('โรงพิมพ์')) {
+                return POPULATION_BY_STRUCTURE['โรงพิมพ์ธนบัตร'] || 0;
+            }
+            if (cleanName.includes('จัดการธนบัตร')) return POPULATION_BY_STRUCTURE['ศูนย์จัดการธนบัตร'] || 0;
+            if (cleanName.includes('เหนือ')) return POPULATION_BY_STRUCTURE['สำนักงานภาคเหนือ'] || 0;
+            if (cleanName.includes('ตะวันออกเฉียงเหนือ')) return POPULATION_BY_STRUCTURE['สำนักงานภาคตะวันออกเฉียงเหนือ'] || 0;
+            if (cleanName.includes('ใต้')) return POPULATION_BY_STRUCTURE['สำนักงานภาคใต้'] || 0;
+            if (cleanName.includes('ใหญ่')) return POPULATION_BY_STRUCTURE['สำนักงานใหญ่'] || 0;
+
+            return 0;
+        };
+
+        // ====================================================================
+        // 🚀 ข้อมูลจำลอง (Mock Data) ใช้เฉพาะกรณีที่ไม่สามารถโหลดไฟล์ CSV ได้
+        // แบบแบ่งโรงพิมพ์ธนบัตร (173) และศูนย์จัดการธนบัตร (55) ตามที่กำหนด
+        // ====================================================================
+        const generateDefaultDatabase = () => {
+            const data = [];
+            let idCounter = 1;
+
+            const targetStructures = [
+                {
+                    name: 'สำนักงานใหญ่',
+                    respondents: 1581,
+                    totalGHG: 1578.820,
+                    workplaces: ['สำนักงานใหญ่'],
+                    vehicles: [
+                        { name: 'รถยนต์ส่วนบุคคล', fuel: 'เบนซิน', ef: 2.2325, weight: 0.38, baseDist: 28 },
+                        { name: 'รถยนต์ส่วนบุคคล', fuel: 'ดีเซล', ef: 2.7403, weight: 0.16, baseDist: 35 },
+                        { name: 'รถยนต์ส่วนบุคคล', fuel: 'ไฟฟ้า (EV)', ef: 0.4999, weight: 0.08, baseDist: 25 },
+                        { name: 'รถจักรยานยนต์ส่วนบุคคล', fuel: 'แก๊สโซฮอล์', ef: 0.0500, weight: 0.12, baseDist: 15 },
+                        { name: 'รถไฟฟ้า BTS/MRT', fuel: 'ไฟฟ้า (EV)', ef: 0.0400, weight: 0.14, baseDist: 18 },
+                        { name: 'รถโดยสารประจำทาง เช่น รถเมล์ รถตู้', fuel: 'CNG', ef: 0.0400, weight: 0.06, baseDist: 14 },
+                        { name: 'เดินเท้า', fuel: '-', ef: 0.0000, weight: 0.06, baseDist: 1 }
+                    ]
+                },
+                {
+                    name: 'สายโครงสร้างพื้นฐานและบริการระบบการชำระเงิน',
+                    respondents: 173,
+                    totalGHG: 376.053,
+                    workplaces: ['โรงพิมพ์ธนบัตร'],
+                    vehicles: [
+                        { name: 'รถยนต์ส่วนบุคคล', fuel: 'ดีเซล', ef: 2.7403, weight: 0.42, baseDist: 45 },
+                        { name: 'รถยนต์ส่วนบุคคล', fuel: 'เบนซิน', ef: 2.2325, weight: 0.28, baseDist: 35 },
+                        { name: 'รถกระบะส่วนบุคคล', fuel: 'ดีเซล', ef: 2.7403, weight: 0.18, baseDist: 50 },
+                        { name: 'รถจักรยานยนต์ส่วนบุคคล', fuel: 'เบนซิน', ef: 0.0500, weight: 0.12, baseDist: 20 }
+                    ]
+                },
+                {
+                    name: 'สายโครงสร้างพื้นฐานและบริการระบบการชำระเงิน',
+                    respondents: 55,
+                    totalGHG: 119.547,
+                    workplaces: ['ศูนย์จัดการธนบัตร'],
+                    vehicles: [
+                        { name: 'รถยนต์ส่วนบุคคล', fuel: 'ดีเซล', ef: 2.7403, weight: 0.42, baseDist: 45 },
+                        { name: 'รถยนต์ส่วนบุคคล', fuel: 'เบนซิน', ef: 2.2325, weight: 0.28, baseDist: 35 },
+                        { name: 'รถกระบะส่วนบุคคล', fuel: 'ดีเซล', ef: 2.7403, weight: 0.18, baseDist: 50 },
+                        { name: 'รถจักรยานยนต์ส่วนบุคคล', fuel: 'เบนซิน', ef: 0.0500, weight: 0.12, baseDist: 20 }
+                    ]
+                },
+                {
+                    name: 'สำนักงานภาคตะวันออกเฉียงเหนือ',
+                    respondents: 32,
+                    totalGHG: 14.890,
+                    workplaces: ['สำนักงานภาคตะวันออกเฉียงเหนือ'],
+                    vehicles: [
+                        { name: 'รถยนต์ส่วนบุคคล', fuel: 'เบนซิน', ef: 2.2325, weight: 0.40, baseDist: 15 },
+                        { name: 'รถจักรยานยนต์ส่วนบุคคล', fuel: 'เบนซิน', ef: 0.0500, weight: 0.40, baseDist: 8 },
+                        { name: 'เดินเท้า', fuel: '-', ef: 0.0000, weight: 0.20, baseDist: 1 }
+                    ]
+                },
+                {
+                    name: 'สำนักงานภาคเหนือ',
+                    respondents: 25,
+                    totalGHG: 17.890,
+                    workplaces: ['สำนักงานภาคเหนือ'],
+                    vehicles: [
+                        { name: 'รถยนต์ส่วนบุคคล', fuel: 'เบนซิน', ef: 2.2325, weight: 0.50, baseDist: 22 },
+                        { name: 'รถจักรยานยนต์ส่วนบุคคล', fuel: 'เบนซิน', ef: 0.0500, weight: 0.30, baseDist: 10 },
+                        { name: 'เดินเท้า', fuel: '-', ef: 0.0000, weight: 0.20, baseDist: 2 }
+                    ]
+                },
+                {
+                    name: 'สำนักงานภาคใต้',
+                    respondents: 29,
+                    totalGHG: 16.410,
+                    workplaces: ['สำนักงานภาคใต้'],
+                    vehicles: [
+                        { name: 'รถยนต์ส่วนบุคคล', fuel: 'เบนซิน', ef: 2.2325, weight: 0.45, baseDist: 18 },
+                        { name: 'รถจักรยานยนต์ส่วนบุคคล', fuel: 'เบนซิน', ef: 0.0500, weight: 0.35, baseDist: 9 },
+                        { name: 'เดินเท้า', fuel: '-', ef: 0.0000, weight: 0.20, baseDist: 1 }
+                    ]
+                }
+            ];
+
+            let seed = 42;
+            const deterministicRandom = () => {
+                let x = Math.sin(seed++) * 10000;
+                return x - Math.floor(x);
+            };
+
+            targetStructures.forEach(target => {
+                const tempRows = [];
+                let currentSumGHG = 0;
+
+                for (let i = 0; i < target.respondents; i++) {
+                    const workplace = target.workplaces[i % target.workplaces.length];
+                    const ratio = deterministicRandom();
+                    
+                    let selectedVeh = target.vehicles[0];
+                    let cumulativeWeight = 0;
+                    for (const veh of target.vehicles) {
+                        cumulativeWeight += veh.weight;
+                        if (ratio <= cumulativeWeight) {
+                            selectedVeh = veh;
+                            break;
+                        }
+                    }
+
+                    let distance = selectedVeh.baseDist + (i % 7) - 3;
+                    if (distance <= 0) distance = 1.0;
+
+                    let efFactor = selectedVeh.ef;
+                    let emissions = 0;
+
+                    if (selectedVeh.name !== 'เดินเท้า') {
+                        const consumption = selectedVeh.name.includes('จักรยานยนต์') ? 42 : 12;
+                        emissions = ((distance * 242) / consumption) * efFactor / 1000;
+                    }
+
+                    tempRows.push({
+                        id: idCounter++,
+                        structure: target.name,
+                        workplace: workplace,
+                        vehicle: selectedVeh.name,
+                        fuel: selectedVeh.fuel,
+                        distance: distance,
+                        carpool: 'ไม่มี',
+                        people: 0,
+                        efFactor: efFactor,
+                        emissions: emissions
+                    });
+
+                    currentSumGHG += emissions;
+                }
+
+                const scaleFactor = target.totalGHG / currentSumGHG;
+                tempRows.forEach(row => {
+                    row.emissions = row.emissions * scaleFactor;
+                    if (row.vehicle !== 'เดินเท้า') {
+                        row.distance = Math.round((row.distance * scaleFactor) * 10) / 10;
+                        if (row.distance <= 0) row.distance = 1.2;
+                    }
+                });
+
+                data.push(...tempRows);
+            });
+
+            return data;
+        };
+
+        const toggleDropdown = (id, event) => {
+            event.stopPropagation();
+            const el = document.getElementById(id);
+            if(id === 'structDropdown') document.getElementById('workplaceDropdown').classList.add('hidden');
+            if(id === 'workplaceDropdown') document.getElementById('structDropdown').classList.add('hidden');
+            el.classList.toggle('hidden');
+        };
+
+        const closeAllDropdowns = (event) => {
+            if (!event.target.closest('#structDropdown') && !event.target.closest('button[onclick*="structDropdown"]')) {
+                document.getElementById('structDropdown').classList.add('hidden');
+            }
+            if (!event.target.closest('#workplaceDropdown') && !event.target.closest('button[onclick*="workplaceDropdown"]')) {
+                document.getElementById('workplaceDropdown').classList.add('hidden');
+            }
+        };
+
+        const updateMultiSelectLabel = (labelId, selectedArray, defaultText) => {
+            const label = document.getElementById(labelId);
+            if (selectedArray.length === 0) {
+                label.innerText = `เลือกทั้งหมด (${defaultText})`;
+                label.classList.add('text-slate-500');
+            } else if (selectedArray.length === 1) {
+                label.innerText = selectedArray[0];
+                label.classList.remove('text-slate-500');
+            } else {
+                label.innerText = `เลือกแล้ว ${selectedArray.length} รายการ`;
+                label.classList.remove('text-slate-500');
+            }
+        };
+
+        const handleCheckboxChange = (type, value, isChecked) => {
+            if (type === 'structure') {
+                if (isChecked) selectedStructures.push(value);
+                else selectedStructures = selectedStructures.filter(v => v !== value);
+                updateMultiSelectLabel('structDropdownLabel', selectedStructures, 'ทุกโครงสร้าง');
+                renderWorkplaceCheckboxes();
+            } else if (type === 'workplace') {
+                if (isChecked) selectedWorkplaces.push(value);
+                else selectedWorkplaces = selectedWorkplaces.filter(v => v !== value);
+                updateMultiSelectLabel('workplaceDropdownLabel', selectedWorkplaces, 'ทุกสถานที่ทำงาน');
+            }
+            applyFilters();
+        };
+
+        const removeFilter = (type, value, event) => {
+            if (event) event.stopPropagation();
+            if (type === 'structure') {
+                selectedStructures = selectedStructures.filter(v => v !== value);
+                const chk = document.querySelector(`#structList input[value="${value}"]`);
+                if (chk) chk.checked = false;
+                updateMultiSelectLabel('structDropdownLabel', selectedStructures, 'ทุกโครงสร้าง');
+                renderWorkplaceCheckboxes(); 
+            } else if (type === 'workplace') {
+                selectedWorkplaces = selectedWorkplaces.filter(v => v !== value);
+                const chk = document.querySelector(`#workplaceList input[value="${value}"]`);
+                if (chk) chk.checked = false;
+                updateMultiSelectLabel('workplaceDropdownLabel', selectedWorkplaces, 'ทุกสถานที่ทำงาน');
+            }
+            applyFilters();
+        };
+
+        const renderActiveFilters = () => {
+            const panel = document.getElementById('activeFiltersPanel');
+            const list = document.getElementById('activeFiltersList');
+            
+            if (selectedStructures.length === 0 && selectedWorkplaces.length === 0) {
+                panel.classList.add('hidden');
+                return;
+            }
+            
+            panel.classList.remove('hidden');
+            let html = '';
+            
+            selectedStructures.forEach(struct => {
+                html += `
+                    <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-100 shadow-sm transition-all hover:bg-emerald-100/70">
+                        <span>โครงสร้าง: ${struct}</span>
+                        <button onclick="removeFilter('structure', '${struct}', event)" class="text-emerald-500 hover:text-emerald-950 transition-colors ml-0.5 focus:outline-none" title="ลบตัวกรอง">
+                            <i data-lucide="x" class="h-3.5 w-3.5"></i>
+                        </button>
+                    </span>
+                `;
+            });
+            
+            selectedWorkplaces.forEach(workplace => {
+                html += `
+                    <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-100 shadow-sm transition-all hover:bg-blue-100/70">
+                        <span>สถานที่ทำงาน: ${workplace}</span>
+                        <button onclick="removeFilter('workplace', '${workplace}', event)" class="text-blue-500 hover:text-blue-950 transition-colors ml-0.5 focus:outline-none" title="ลบตัวกรอง">
+                            <i data-lucide="x" class="h-3.5 w-3.5"></i>
+                        </button>
+                    </span>
+                `;
+            });
+            
+            list.innerHTML = html;
+            lucide.createIcons();
+        };
+
+        const clearFilters = () => {
+            selectedStructures = [];
+            selectedWorkplaces = [];
+            renderStructureCheckboxes();
+            renderWorkplaceCheckboxes();
+            applyFilters();
+        };
+
+        const renderStructureCheckboxes = () => {
+            const structures = [...new Set(rawData.map(d => d.structure).filter(Boolean))].sort();
+            const container = document.getElementById('structList');
+            container.innerHTML = structures.map(s => `
+                <label class="flex items-center p-2 hover:bg-slate-50 rounded cursor-pointer transition-colors">
+                    <input type="checkbox" value="${s}" ${selectedStructures.includes(s) ? 'checked' : ''} 
+                           onchange="handleCheckboxChange('structure', this.value, this.checked)"
+                           class="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500">
+                    <span class="ml-2 text-sm text-slate-700">${s}</span>
+                </label>
+            `).join('');
+            updateMultiSelectLabel('structDropdownLabel', selectedStructures, 'ทุกโครงสร้าง');
+        };
+
+        const renderWorkplaceCheckboxes = () => {
+            let availableData = rawData;
+            if (selectedStructures.length > 0) {
+                availableData = rawData.filter(d => selectedStructures.includes(d.structure));
+            }
+            const workplaces = [...new Set(availableData.map(d => d.workplace).filter(Boolean))].sort();
+            selectedWorkplaces = selectedWorkplaces.filter(wp => workplaces.includes(wp));
+
+            const container = document.getElementById('workplaceList');
+            container.innerHTML = workplaces.map(w => `
+                <label class="flex items-center p-2 hover:bg-slate-50 rounded cursor-pointer transition-colors">
+                    <input type="checkbox" value="${w}" ${selectedWorkplaces.includes(w) ? 'checked' : ''} 
+                           onchange="handleCheckboxChange('workplace', this.value, this.checked)"
+                           class="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500">
+                    <span class="ml-2 text-sm text-slate-700">${w}</span>
+                </label>
+            `).join('');
+            updateMultiSelectLabel('workplaceDropdownLabel', selectedWorkplaces, 'ทุกสถานที่ทำงาน');
+        };
+
+        const processData = (data) => {
+            rawData = data;
+            renderStructureCheckboxes();
+            renderWorkplaceCheckboxes();
+            applyFilters();
+        };
+
+        const applyFilters = () => {
+            filteredData = rawData.filter(d => {
+                const matchStructure = selectedStructures.length === 0 || selectedStructures.includes(d.structure);
+                const matchWorkplace = selectedWorkplaces.length === 0 || selectedWorkplaces.includes(d.workplace);
+                return matchStructure && matchWorkplace;
+            });
+            renderActiveFilters(); 
+            renderDashboard();
+        };
+
+        const renderDashboard = () => {
+            calculateAndRenderUpscale();
+            renderTable();
+            renderCharts();
+        };
+
+        const calculateAndRenderUpscale = () => {
+            const surveyTotalEmissions = filteredData.reduce((sum, d) => sum + (d.emissions || 0), 0);
+            const surveyTotalRecords = filteredData.length;
+            
+            const structureStats = {};
+            
+            filteredData.forEach(d => {
+                let displayKey = d.workplace || d.structure;
+                if (!displayKey || displayKey.trim() === '') displayKey = 'ไม่ระบุสถานที่ทำงาน';
+                
+                if (!structureStats[displayKey]) {
+                    structureStats[displayKey] = { respondents: 0, surveyEmissions: 0 };
+                }
+                structureStats[displayKey].respondents += 1;
+                structureStats[displayKey].surveyEmissions += (d.emissions || 0);
+            });
+
+            let totalUpscaledEmissions = 0;
+            let totalPopulationCount = 0; 
+            let tableHTML = '';
+
+            Object.keys(structureStats).sort().forEach(struct => {
+                const stats = structureStats[struct];
+                const population = getStructurePopulation(struct);
+                totalPopulationCount += population;
+                
+                let responseRateText = '-';
+                let multiplierText = '-';
+                let upscaledGhg = stats.surveyEmissions;
+
+                if (population > 0) {
+                    const responseRate = (stats.respondents / population) * 100;
+                    responseRateText = `${responseRate.toFixed(1)}%`;
+                    const multiplier = population / stats.respondents;
+                    multiplierText = `x${multiplier.toFixed(2)}`;
+                    upscaledGhg = stats.surveyEmissions * multiplier;
+                    totalUpscaledEmissions += upscaledGhg;
+                } else {
+                    totalUpscaledEmissions += stats.surveyEmissions;
+                    multiplierText = 'x1.00';
+                }
+
+                tableHTML += `
+                    <tr class="border-b border-slate-100 hover:bg-slate-50">
+                        <td class="px-4 py-3 font-medium text-slate-800">${struct}</td>
+                        <td class="px-4 py-3 text-right">${population > 0 ? population.toLocaleString() : 'ไม่ระบุในระบบ'}</td>
+                        <td class="px-4 py-3 text-right">${stats.respondents.toLocaleString()}</td>
+                        <td class="px-4 py-3 text-right">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${population > 0 ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}">
+                                ${responseRateText}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-right text-slate-400">${multiplierText}</td>
+                        <td class="px-4 py-3 text-right font-medium text-blue-600">${stats.surveyEmissions.toFixed(3)}</td>
+                        <td class="px-4 py-3 text-right font-bold text-emerald-600">${upscaledGhg.toFixed(3)}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('kpi-survey-emissions').innerText = surveyTotalEmissions.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3});
+            document.getElementById('kpi-survey-records').innerText = surveyTotalRecords.toLocaleString();
+            
+            document.getElementById('kpi-upscaled-emissions').innerText = totalUpscaledEmissions.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3});
+            document.getElementById('kpi-total-population').innerText = totalPopulationCount.toLocaleString();
+
+            if (Object.keys(structureStats).length === 0) {
+                tableHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">ไม่มีข้อมูลตามตัวกรองที่เลือก</td></tr>';
+            }
+            document.getElementById('upscaleTableBody').innerHTML = tableHTML;
+        };
+
+        const renderTable = () => {
+            const tbody = document.getElementById('dataTableBody');
+            const noData = document.getElementById('noDataMessage');
+            
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '';
+                noData.classList.remove('hidden');
+                return;
+            }
+            
+            noData.classList.add('hidden');
+            tbody.innerHTML = filteredData.slice(0, 100).map(row => `
+                <tr class="bg-white border-b hover:bg-slate-50 transition-colors">
+                    <td class="px-4 py-3 font-medium text-slate-900 truncate max-w-[150px]">${row.structure}</td>
+                    <td class="px-4 py-3 truncate max-w-[150px]">${row.workplace}</td>
+                    <td class="px-4 py-3 truncate max-w-[150px]">${row.vehicle}</td>
+                    <td class="px-4 py-3">${row.fuel || '-'}</td>
+                    <td class="px-4 py-3 text-right font-semibold text-slate-600">${row.efFactor ? row.efFactor.toFixed(4) : '0.0000'}</td>
+                    <td class="px-4 py-3 text-right">${row.distance}</td>
+                    <td class="px-4 py-3 text-right font-medium text-emerald-600">${row.emissions.toFixed(3)}</td>
+                </tr>
+            `).join('');
+            
+            if(filteredData.length > 100) {
+                 tbody.innerHTML += `<tr><td colspan="7" class="px-4 py-3 text-center text-xs text-slate-400 bg-slate-50">แสดงข้อมูล 100 รายการแรกจากทั้งหมด ${filteredData.length} รายการ</td></tr>`;
+            }
+        };
+
+        const renderCharts = () => {
+            renderDynamicChart();
+            
+            const workplaceGroups = filteredData.reduce((acc, d) => {
+                if (!acc[d.workplace]) acc[d.workplace] = 0;
+                acc[d.workplace] += d.emissions;
+                return acc;
+            }, {});
+
+            const sortedWorkplaces = Object.entries(workplaceGroups)
+                .sort((a, b) => b[1] - a[1]); 
+
+            if (workplaceChartInstance) workplaceChartInstance.destroy();
+            const ctxD = document.getElementById('workplaceChart').getContext('2d');
+            workplaceChartInstance = new Chart(ctxD, {
+                type: 'bar',
+                data: {
+                    labels: sortedWorkplaces.map(d => d[0]),
+                    datasets: [{
+                        label: 'GHG สำรวจได้ (TonCO2e)',
+                        data: sortedWorkplaces.map(d => d[1]),
+                        backgroundColor: '#3B82F6', borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) { return ' ' + context.parsed.x.toFixed(3) + ' TonCO2e'; }
+                            }
+                        }
+                    }, 
+                    scales: { x: { beginAtZero: true } }
+                }
+            });
+        };
+
+        const renderDynamicChart = () => {
+            const viewMode = document.getElementById('chartViewToggle').value;
+            let groupedData = {};
+            
+            if (viewMode === 'vehicle') {
+                groupedData = filteredData.reduce((acc, d) => {
+                    let v = d.vehicle || '';
+                    let category = 'อื่นๆ';
+                    if(v.includes('เดินเท้า')) category = 'เดินเท้า';
+                    else if(v.includes('รถจักรยานยนต์รับจ้าง')) category = 'รถจักรยานยนต์รับจ้าง';
+                    else if(v.includes('จักรยานยนต์')) category = 'รถจักรยานยนต์ส่วนบุคคล';
+                    else if(v.includes('กระบะ')) category = 'รถกระบะส่วนบุคคล';
+                    else if(v.includes('รถยนต์')) category = 'รถยนต์ส่วนบุคคล';
+                    else if(v.includes('BTS') || v.includes('MRT') || v.includes('รถไฟฟ้า') || v.includes('ARL')) category = 'รถไฟฟ้า BTS/MRT';
+                    else if(v.includes('ประจำทาง') || v.includes('เมล์') || v.includes('ตู้')) category = 'รถโดยสารประจำทาง เช่น รถเมล์ รถตู้';
+                    else if(v.includes('เรือ')) category = 'เรือด่วน';
+                    else if(v.includes('รับจ้าง') || v.includes('Taxi') || v.includes('Grab')) category = 'รถรับจ้าง เช่น Taxi Grab Bolt';
+                    
+                    if (!acc[category]) acc[category] = 0;
+                    acc[category] += d.emissions;
+                    return acc;
+                }, {});
+            } else {
+                groupedData = filteredData.reduce((acc, d) => {
+                    let f = (d.fuel || '').toUpperCase();
+                    let category = null;
+                    if(f.includes('ดีเซล') || f.includes('DIESEL')) category = '1. เชื้อเพลิงดีเซล';
+                    else if(f.includes('เบนซิน') || f.includes('GASOHOL') || f.includes('PETROL') || f.includes('GASOLINE')) category = '2. เชื้อเพลิงเบนซิน';
+                    else if(f.includes('NGV') || f.includes('CNG')) category = '3. เชื้อเพลิง NGV';
+                    else if(f.includes('LPG')) category = '4. เชื้อเพลิง LPG';
+                    else if(f.includes('ไฟฟ้า') || f.includes('EV')) category = 'พาหนะไฟฟ้า (EV)';
+                    else if(f.includes('HYBRID')) category = 'พาหนะ Hybrid';
+                    else if(d.vehicle.includes('เดินเท้า')) category = 'เดินเท้า';
+                    
+                    if (category) {
+                        if (!acc[category]) acc[category] = 0;
+                        acc[category] += d.emissions;
+                    }
+                    return acc;
+                }, {});
+            }
+
+            const labels = Object.keys(groupedData).sort(); 
+            const data = labels.map(l => groupedData[l]);
+
+            if (vehicleChartInstance) vehicleChartInstance.destroy();
+            const ctxV = document.getElementById('vehicleChart').getContext('2d');
+            const isHorizontal = viewMode === 'scope3'; 
+
+            vehicleChartInstance = new Chart(ctxV, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'GHG สำรวจได้ (TonCO2e)',
+                        data: data,
+                        backgroundColor: viewMode === 'scope3' ? ['#F59E0B', '#EF4444', '#10B981', '#3B82F6', '#8B5CF6', '#14B8A6'] : CHART_COLORS,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: isHorizontal ? 'y' : 'x', responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: isHorizontal ? { x: { beginAtZero: true } } : { y: { beginAtZero: true } }
+                }
+            });
+        };
+
+        document.getElementById('chartViewToggle').addEventListener('change', renderDynamicChart);
+
+        const switchAiTab = (tabIndex) => {
+            const tab1 = document.getElementById('aiTab1');
+            const tab2 = document.getElementById('aiTab2');
+            const btn1 = document.getElementById('aiTab1Btn');
+            const btn2 = document.getElementById('aiTab2Btn');
+            
+            if (tabIndex === 1) {
+                tab1.classList.remove('hidden');
+                tab2.classList.add('hidden');
+                btn1.className = "px-3 py-1.5 text-xs font-semibold rounded-md bg-white text-emerald-800 shadow-sm transition-all flex items-center gap-1";
+                btn2.className = "px-3 py-1.5 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-800 transition-all flex items-center gap-1";
+            } else {
+                tab1.classList.add('hidden');
+                tab2.classList.remove('hidden');
+                btn1.className = "px-3 py-1.5 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-800 transition-all flex items-center gap-1";
+                btn2.className = "px-3 py-1.5 text-xs font-semibold rounded-md bg-white text-emerald-800 shadow-sm transition-all flex items-center gap-1";
+            }
+        };
+
+        const parseMarkdownToHTML = (md) => {
+            if (!md) return '';
+            let html = md;
+            html = html.replace(/^### (.*$)/gim, '<h4 class="text-emerald-800 font-bold text-base mt-4 mb-1.5 flex items-center gap-1">✦ $1</h4>');
+            html = html.replace(/^## (.*$)/gim, '<h3 class="text-emerald-900 font-bold text-lg mt-5 mb-2.5 border-b border-emerald-100 pb-1">$1</h3>');
+            html = html.replace(/^# (.*$)/gim, '<h2 class="text-emerald-950 font-extrabold text-xl mt-6 mb-3">$1</h2>');
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-slate-950 bg-emerald-50/50 px-1 rounded">$1</strong>');
+            html = html.replace(/^\s*[-*+]\s+(.*)$/gim, '<li class="ml-5 list-disc text-slate-700 py-1">$1</li>');
+            html = html.replace(/\n/g, '<br>');
+            html = html.replace(/(<li.*<\/li>)/g, '<ul class="my-3 space-y-1 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">$1</ul>');
+            return html;
+        };
+
+        const copyToClipboard = (elementId) => {
+            const textToCopy = document.getElementById(elementId).innerText;
+            const tempTextArea = document.createElement("textarea");
+            tempTextArea.value = textToCopy;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+            
+            const toast = document.getElementById('toastNotification');
+            toast.classList.remove('hidden');
+            setTimeout(() => { toast.classList.add('hidden'); }, 2500);
+        };
+
+        const callGemini = async (systemPrompt, userPrompt, onSuccess, onError) => {
+            const apiKey = ""; 
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: userPrompt }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+            };
+
+            let delay = 1000;
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const result = await response.json();
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) {
+                        onSuccess(text);
+                        return;
+                    } else {
+                        throw new Error("ระบบประมวลผลไม่พบผลลัพธ์คำตอบจากโมเดล");
+                    }
+                } catch (err) {
+                    if (i === 4) {
+                        onError(err.message || "เกิดปัญหาขัดข้องชั่วคราวในการติดต่อ API");
+                        return;
+                    }
+                    await new Promise(res => setTimeout(res, delay));
+                    delay *= 2;
+                }
+            }
+        };
+
+        const generateAiSummary = () => {
+            const btn = document.getElementById('btnGenerateSummary');
+            const wrapper = document.getElementById('aiSummaryOutputWrapper');
+            const loader = document.getElementById('aiSummaryLoader');
+            const errorDiv = document.getElementById('aiSummaryError');
+            const outputDiv = document.getElementById('aiSummaryOutput');
+            
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            wrapper.classList.remove('hidden');
+            loader.classList.remove('hidden');
+            errorDiv.classList.add('hidden');
+            outputDiv.innerHTML = '';
+
+            const surveyTotal = document.getElementById('kpi-survey-emissions').innerText;
+            const upscaledTotal = document.getElementById('kpi-upscaled-emissions').innerText;
+            const totalRecords = document.getElementById('kpi-survey-records').innerText;
+            const totalPop = document.getElementById('kpi-total-population').innerText;
+            const activeStructs = selectedStructures.length > 0 ? selectedStructures.join(', ') : 'ทุกโครงสร้างใน ธปท.';
+            const activeWorkplaces = selectedWorkplaces.length > 0 ? selectedWorkplaces.join(', ') : 'ทุกสถานที่ทำงาน';
+
+            const systemPrompt = "คุณเป็นที่ปรึกษาด้านการประเมินคาร์บอนฟุตพริ้นท์ตามเกณฑ์มาตรฐาน CFO Scope 3 และมีความเชี่ยวชาญด้านเป้าหมาย Net Zero ของธนาคารแห่งประเทศไทย (ธปท.) บทบาทของคุณคือทำหน้าที่วิเคราะห์สถิติจากแดชบอร์ดด้านการเดินทางพนักงาน สรุปจุดสำคัญ จุดที่ปล่อยสูงสุด และนำเสนอมาตรการที่เหมาะสม เป็นรูปธรรม และสร้างความมีส่วนร่วมของพนักงาน ธปท. ได้จริง";
+            
+            const userPrompt = `โปรดสรุปผลการเดินทางของพนักงาน ธปท. ประจำปี 2568 จากชุดข้อมูลล่าสุด ดังนี้:
+            1. สรุปข้อมูลสถิติพื้นฐาน: 
+               - อัตราคนตอบแบบสอบถาม: ${totalRecords} คน จากพนักงานทั้งหมด ${totalPop} คน 
+               - โครงสร้างที่เลือกวิเคราะห์: ${activeStructs} / สถานที่ทำงาน: ${activeWorkplaces}
+               - คาร์บอนจากการเดินทางที่เก็บข้อมูลได้: ${surveyTotal} TonCO2e
+               - คาร์บอนที่คาดการณ์แบบขยายสัดส่วน (Upscaled): ${upscaledTotal} TonCO2e
+            2. ประเมินหาว่าจากข้อมูลสถิติตี้ อะไรน่าจะเป็น 'จุดปล่อยคาร์บอนหลัก' (Hotspot) และมีผลกระทบอย่างไร โดยอ้างอิงข้อมูลสถิติแยกราย "สถานที่ทำงาน" ของแต่ละภาคส่วน
+            3. เสนอแนะ 3 แคมเปญมาตรการลดการปล่อยก๊าซคาร์บอนที่สร้างสรรค์และสอดรับกับนโยบาย ESG ของ ธปท. (เช่น สนับสนุนรถรับส่ง EV สำหรับสถานที่ทำงานห่างไกล, เชิดชูเกียรติผู้ทำ Carpool หรือ แผนการเดินทางแบบรักษ์โลกอื่น ๆ แยกรายสถานที่ทำงาน)
+            
+            หมายเหตุ: กรุณาเขียนข้อความด้วยภาษาไทยที่เป็นทางการ สุภาพ อ่านง่าย มีโครงสร้างหัวข้อแบบ Markdown ที่สวยงามชัดเจน`;
+
+            callGemini(
+                systemPrompt,
+                userPrompt,
+                (response) => {
+                    loader.classList.add('hidden');
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    outputDiv.innerHTML = parseMarkdownToHTML(response);
+                    lucide.createIcons();
+                },
+                (errorMessage) => {
+                    loader.classList.add('hidden');
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    errorDiv.classList.remove('hidden');
+                    document.getElementById('aiSummaryErrorText').innerText = errorMessage;
+                }
+            );
+        };
+
+        const sendChatMessage = () => {
+            const input = document.getElementById('chatInput');
+            const userText = input.value.trim();
+            if (!userText) return;
+
+            appendChatBubble(userText, 'user');
+            input.value = '';
+
+            executeChatQuery(userText);
+        };
+
+        const sendQuickQuestion = (promptText) => {
+            appendChatBubble(promptText, 'user');
+            executeChatQuery(promptText);
+        };
+
+        const appendChatBubble = (text, sender) => {
+            const list = document.getElementById('chatMessageList');
+            const isUser = sender === 'user';
+            
+            const bubble = document.createElement('div');
+            bubble.className = "flex items-start gap-2.5 " + (isUser ? "justify-end" : "");
+            
+            const iconHtml = isUser 
+                ? `<div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0 text-slate-700 order-2">
+                       <i data-lucide="user" class="h-4 w-4"></i>
+                   </div>`
+                : `<div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-700">
+                       <i data-lucide="bot" class="h-4 w-4"></i>
+                   </div>`;
+
+            const textHtml = `
+                <div class="${isUser ? 'bg-emerald-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-none'} rounded-2xl px-4 py-2.5 text-sm max-w-[85%] ${isUser ? 'order-1' : ''}">
+                    <p class="leading-relaxed whitespace-pre-line">${isUser ? text : parseMarkdownToHTML(text)}</p>
+                </div>
+            `;
+            
+            bubble.innerHTML = iconHtml + textHtml;
+            list.appendChild(bubble);
+            lucide.createIcons();
+            list.scrollTop = list.scrollHeight;
+        };
+
+        const executeChatQuery = (userText) => {
+            const indicator = document.getElementById('chatTypingIndicator');
+            const input = document.getElementById('chatInput');
+            const btn = document.getElementById('btnSendChat');
+            
+            indicator.classList.remove('hidden');
+            input.disabled = true;
+            btn.disabled = true;
+
+            const systemPrompt = "คุณคือสถาปนิกและผู้เชี่ยวชาญด้านสิ่งแวดล้อมและความยั่งยืน ประจำฝ่ายจัดการความเสี่ยงองค์กร ธนาคารแห่งประเทศไทย (ธปท.) ให้ตอบคำถาม คำนวณอธิบายค่า EF ประเมิน และให้คำแนะนำนโยบายคาร์บอนฟุตพริ้นท์ (CFO Scope 3 Commuting) แก่พนักงานด้วยมิตรไมตรี สุภาพ อ่อนน้อม และสามารถให้แนวปฏิบัติที่ชัดเจนตามมาตรฐานสากล";
+            
+            callGemini(
+                systemPrompt,
+                userText,
+                (response) => {
+                    indicator.classList.add('hidden');
+                    input.disabled = false;
+                    btn.disabled = false;
+                    appendChatBubble(response, 'bot');
+                },
+                (errorMessage) => {
+                    indicator.classList.add('hidden');
+                    input.disabled = false;
+                    btn.disabled = false;
+                    appendChatBubble(`❌ ขออภัยด้วยครับ เกิดข้อผิดพลาดชั่วคราว: ${errorMessage}`, 'bot');
+                }
+            );
+        };
+
+        // ==========================================
+        // 🚀 CSV Parsing Logic & Loading Data 
+        // ==========================================
+
+        const parseJSONData = (jsonData) => {
+            const parsedData = [];
+            jsonData.forEach((row, index) => {
+                const keys = Object.keys(row);
+                
+                const getKey = (keywords) => {
+                    const match = keys.find(k => keywords.some(kw => k.toUpperCase().includes(kw.toUpperCase())));
+                    return match ? row[match] : undefined;
+                };
+
+                const structVal = getKey(['โครงสร้างองค์กร', 'โครงสร้าง']);
+                const workplaceVal = getKey(['สถานที่ทำงาน']);
+                
+                const colPersonalVeh = getKey(['เดินทางมาทำงานโดยพาหนะส่วนบุคคล']);
+                const colPublicVeh = getKey(['พาหนะสาธารณะ (ระบุ']);
+                const colMainMethod = getKey(['เดินทางมาทำงานโดย พาหนะส่วนบุคคล, พาหนะสาธารณะ']);
+                const colVehicleShort = getKey(['VEHICLE']);
+                
+                const colFuelType = getKey(['FUEL TYPE']);
+                const colFuelThai = getKey(['พลังงานเชื้อเพลิงของยานพาหนะ2']);
+                const colFuelThaiMotor = getKey(['พลังงานเชื้อเพลิงของยานพาหนะ']);
+                
+                const distanceVal = getKey(['ระยะทาง']);
+                const carpoolVal = getKey(['Car Pool', 'ร่วมเดินทาง']);
+                const peopleVal = getKey(['จำนวน (คน)', 'จำนวน']);
+                
+                const efVal = getKey(['EF_FACTOR', 'EF']);
+                const ghgVal = getKey(['GHG', 'TONCO2E']);
+                const fuelConsYearVal = getKey(['FUEL CONSUMPTION', 'YEAR']);
+
+                let workplace = workplaceVal || 'ไม่ระบุสถานที่ทำงาน';
+                if (!workplace || workplace.trim() === '') workplace = 'ไม่ระบุสถานที่ทำงาน';
+
+                let vehicle = 'ไม่ระบุ';
+                if (colVehicleShort) vehicle = colVehicleShort;
+                else if (colPersonalVeh) vehicle = colPersonalVeh;
+                else if (colPublicVeh) vehicle = colPublicVeh;
+                else if (colMainMethod) vehicle = colMainMethod;
+
+                let fuel = '-';
+                if (colFuelType) fuel = colFuelType;
+                else if (colFuelThai) fuel = colFuelThai;
+                else if (colFuelThaiMotor) fuel = colFuelThaiMotor;
+
+                const distance = parseFloat(distanceVal) || 0;
+                const carpool = carpoolVal || 'ไม่มี';
+                const people = parseInt(peopleVal) || 0;
+                
+                let efFactor = 0;
+                if (efVal) {
+                    efFactor = parseFloat(String(efVal).replace(/,/g, '').trim()) || 0;
+                }
+
+                let emissions = 0;
+                let hasPrecalcGhg = false;
+
+                if (ghgVal) {
+                    const ghgStr = String(ghgVal).replace(/,/g, '').trim();
+                    if (ghgStr !== '-' && ghgStr !== '' && ghgStr !== '0') {
+                        emissions = parseFloat(ghgStr) || 0;
+                        hasPrecalcGhg = true;
+                    }
+                }
+
+                if (!hasPrecalcGhg && efFactor > 0) {
+                    if (fuelConsYearVal) {
+                        const fuelVal = parseFloat(String(fuelConsYearVal).replace(/,/g, '').trim()) || 0;
+                        emissions = (fuelVal * efFactor) / 1000;
+                    }
+                }
+
+                parsedData.push({
+                    id: index + 1,
+                    structure: structVal || 'ไม่ระบุ',
+                    workplace: workplace, 
+                    vehicle: vehicle, 
+                    fuel: fuel, 
+                    distance: distance,
+                    carpool: carpool, 
+                    people: people, 
+                    efFactor: efFactor,
+                    emissions: emissions
+                });
+            });
+            
+            clearFilters(); 
+            processData(parsedData);
+        };
+
+        const parseCSVText = (csvText) => {
+            const rows = [];
+            let currentRow = []; let currentCell = ''; let insideQuotes = false;
+            for (let i = 0; i < csvText.length; i++) {
+                const char = csvText[i]; const nextChar = csvText[i + 1];
+                if (char === '"' && insideQuotes && nextChar === '"') { currentCell += '"'; i++; } 
+                else if (char === '"') { insideQuotes = !insideQuotes; } 
+                else if (char === ',' && !insideQuotes) { currentRow.push(currentCell.trim()); currentCell = ''; } 
+                else if ((char === '\n' || char === '\r') && !insideQuotes) {
+                    if (char === '\r' && nextChar === '\n') i++;
+                    currentRow.push(currentCell.trim());
+                    if (currentRow.some(cell => cell !== '')) rows.push(currentRow);
+                    currentRow = []; currentCell = '';
+                } else { currentCell += char; }
+            }
+            if (currentRow.length > 0 || currentCell !== '') { currentRow.push(currentCell.trim()); rows.push(currentRow); }
+            if (rows.length < 2) return;
+            
+            const headers = rows[0];
+            const structIdx = headers.findIndex(h => h.includes('โครงสร้างองค์กร') || h === 'โครงสร้าง');
+            const workplaceIdx = headers.findIndex(h => h.includes('สถานที่ทำงาน')); 
+            
+            const colPersonalVeh = headers.findIndex(h => h.includes('เดินทางมาทำงานโดยพาหนะส่วนบุคคล'));
+            const colPublicVeh = headers.findIndex(h => h.includes('พาหนะสาธารณะ (ระบุ'));
+            const colMainMethod = headers.findIndex(h => h.includes('เดินทางมาทำงานโดย พาหนะส่วนบุคคล, พาหนะสาธารณะ'));
+            const colVehicleShort = headers.findIndex(h => h === 'VEHICLE');
+            
+            const colFuelType = headers.findIndex(h => h.includes('FUEL TYPE'));
+            const colFuelThai = headers.findIndex(h => h.includes('พลังงานเชื้อเพลิงของยานพาหนะ2'));
+            const colFuelThaiMotor = headers.findIndex(h => h.includes('พลังงานเชื้อเพลิงของยานพาหนะ'));
+            
+            const distanceIdx = headers.findIndex(h => h.includes('ระยะทาง'));
+            const carpoolIdx = headers.findIndex(h => h.includes('Car Pool') || h.includes('ร่วมเดินทาง'));
+            const peopleIdx = headers.findIndex(h => h.includes('จำนวน (คน)') || h === 'จำนวน');
+            
+            const efIdx = headers.findIndex(h => h.toUpperCase().includes('EF_FACTOR') || h.toUpperCase() === 'EF');
+            const ghgIdx = headers.findIndex(h => h.toUpperCase().includes('GHG') || h.toUpperCase().includes('TONCO2E'));
+            const fuelConsYearIdx = headers.findIndex(h => h.toUpperCase().includes('FUEL CONSUMPTION') && h.toUpperCase().includes('YEAR'));
+
+            const parsedData = [];
+            for (let i = 1; i < rows.length; i++) {
+                const currentline = rows[i];
+                if (currentline.length < 2) continue;
+                
+                let workplace = workplaceIdx >= 0 ? currentline[workplaceIdx] : 'ไม่ระบุสถานที่ทำงาน';
+                if (!workplace || workplace.trim() === '') workplace = 'ไม่ระบุสถานที่ทำงาน';
+
+                let vehicle = 'ไม่ระบุ';
+                if (colVehicleShort >= 0 && currentline[colVehicleShort]) {
+                    vehicle = currentline[colVehicleShort];
+                } else if (colPersonalVeh >= 0 && currentline[colPersonalVeh]) {
+                    vehicle = currentline[colPersonalVeh];
+                } else if (colPublicVeh >= 0 && currentline[colPublicVeh]) {
+                    vehicle = currentline[colPublicVeh];
+                } else if (colMainMethod >= 0 && currentline[colMainMethod]) {
+                    vehicle = currentline[colMainMethod];
+                }
+
+                let fuel = '-';
+                if (colFuelType >= 0 && currentline[colFuelType]) fuel = currentline[colFuelType];
+                else if (colFuelThai >= 0 && currentline[colFuelThai]) fuel = currentline[colFuelThai];
+                else if (colFuelThaiMotor >= 0 && currentline[colFuelThaiMotor]) fuel = currentline[colFuelThaiMotor];
+
+                const distance = distanceIdx >= 0 ? parseFloat(currentline[distanceIdx]) || 0 : 0;
+                const carpool = carpoolIdx >= 0 ? currentline[carpoolIdx] : 'ไม่มี';
+                const people = peopleIdx >= 0 ? parseInt(currentline[peopleIdx]) || 0 : 0;
+                
+                let efFactor = 0;
+                if (efIdx >= 0 && currentline[efIdx]) {
+                    const efStr = efIdx >= 0 ? currentline[efIdx].replace(/,/g, '').trim() : "0";
+                    efFactor = parseFloat(efStr) || 0;
+                }
+
+                let emissions = 0;
+                let hasPrecalcGhg = false;
+
+                if (ghgIdx >= 0 && currentline[ghgIdx]) {
+                    const ghgStr = currentline[ghgIdx].replace(/,/g, '').trim();
+                    if (ghgStr !== '-' && ghgStr !== '' && ghgStr !== '0') {
+                        emissions = parseFloat(ghgStr) || 0;
+                        hasPrecalcGhg = true;
+                    }
+                }
+
+                if (!hasPrecalcGhg && efFactor > 0) {
+                    if (fuelConsYearIdx >= 0 && currentline[fuelConsYearIdx]) {
+                        const fuelVal = parseFloat(currentline[fuelConsYearIdx].replace(/,/g, '').trim()) || 0;
+                        emissions = (fuelVal * efFactor) / 1000;
+                    }
+                }
+
+                parsedData.push({
+                    id: i,
+                    structure: structIdx >= 0 ? currentline[structIdx] || 'ไม่ระบุ' : 'ไม่ระบุ',
+                    workplace: workplace, 
+                    vehicle: vehicle, 
+                    fuel: fuel, 
+                    distance: distance,
+                    carpool: carpool, 
+                    people: people, 
+                    efFactor: efFactor,
+                    emissions: emissions
+                });
+            }
+            
+            clearFilters(); 
+            processData(parsedData);
+        };
+
+        // File Upload Listener
+        document.getElementById('fileUpload').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => parseCSVText(event.target.result);
+                reader.readAsText(file);
+            }
+        });
+
+        // โหลดข้อมูลอัตโนมัติจากไฟล์ CSV หรือ Google Sheets
+        const loadDefaultDatabase = async () => {
+            const noDataMsg = document.getElementById('noDataMessage');
+            
+            // 1. ลองโหลดจาก Google Apps Script ก่อน (ถ้ามีการใส่ URL)
+            if (GOOGLE_APPS_SCRIPT_URL && GOOGLE_APPS_SCRIPT_URL.trim() !== "") {
+                try {
+                    if(noDataMsg) {
+                        noDataMsg.innerText = 'กำลังดึงข้อมูลจาก Google Sheets... กรุณารอสักครู่';
+                        noDataMsg.classList.remove('hidden');
+                    }
+                    
+                    const response = await fetch(GOOGLE_APPS_SCRIPT_URL);
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const jsonData = await response.json();
+                    
+                    if (jsonData && jsonData.length > 0) {
+                        if (jsonData[0].structure !== undefined) {
+                            clearFilters();
+                            processData(jsonData);
+                        } else {
+                            parseJSONData(jsonData);
+                        }
+                    }
+                    
+                    const saved = localStorage.getItem('ghg_changelog');
+                    if (saved) changelogData = JSON.parse(saved);
+                    return; 
+                } catch (error) {
+                    console.error('เกิดข้อผิดพลาดในการดึงข้อมูลจาก Google Sheet:', error);
+                }
+            }
+            
+            // 2. โหลดจากไฟล์ CSV ที่แนบมา หรือ สร้างข้อมูลตั้งต้น (Default Embedded Data) ให้รองรับการออฟไลน์
+            try {
+                if(noDataMsg) {
+                    noDataMsg.innerText = 'กำลังดึงข้อมูลจากไฟล์ฐานข้อมูล CSV อัตโนมัติ...';
+                    noDataMsg.classList.remove('hidden');
+                }
+                const response = await fetch('2568-แบบสอบถามการเดินทางของพนักงาน ธปท. ปี 2568(1-1895).csv');
+                if (!response.ok) throw new Error('ไม่พบไฟล์ CSV');
+                const csvText = await response.text();
+                parseCSVText(csvText);
+            } catch (error) {
+                console.warn('ไม่สามารถโหลดไฟล์ CSV จาก URL ได้ จะใช้ Embedded Database แทนครับ (Fallback)');
+                processData(generateDefaultDatabase());
+            }
+            
+            const saved = localStorage.getItem('ghg_changelog');
+            if (saved) changelogData = JSON.parse(saved);
+        };
+
+        window.onload = () => { 
+            filteredData = [];
+            renderDashboard();
+            loadDefaultDatabase(); 
+        };
+    </script>
+</body>
+</html>
