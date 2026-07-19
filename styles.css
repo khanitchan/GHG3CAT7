@@ -113,3 +113,28 @@ dialog { width: min(600px, calc(100vw - 30px)); border: 1px solid var(--line); b
 @media (max-width: 720px) { .main-content { padding: 16px; }.topbar { flex-wrap: wrap; }.toolbar { width: 100%; justify-content: flex-start; padding-left: 48px; }.kpi-grid { grid-template-columns: repeat(2,1fr); }.kpi-card.featured { grid-column: span 2; }.panel-span-5,.panel-span-6,.panel-span-7,.panel-span-12 { grid-column: span 12; }.donut-layout { grid-template-columns: 140px 1fr; }.donut { width: 138px; }.donut::after { width: 88px; }.location-grid,.insights-grid { grid-template-columns: 1fr; }.hbar-row { grid-template-columns: minmax(130px,2fr) minmax(120px,4fr) 70px; }.table-header { align-items: flex-start; flex-direction: column; }.table-tools { width: 100%; }.table-tools input { flex: 1; width: auto; } }
 @media (max-width: 470px) { .kpi-grid { grid-template-columns: 1fr; }.kpi-card.featured { grid-column: span 1; }.quality-alert { align-items: flex-start; flex-wrap: wrap; }.details-button { margin-left: 42px; }.donut-layout { grid-template-columns: 1fr; justify-items: center; }.legend { width: 100%; }.bar-row { grid-template-columns: 60px 1fr 64px; }.column-chart { gap: 4px; }.action-button { font-size: 11px; }.toolbar { padding-left: 0; }.hbar-row { grid-template-columns: 1fr 62px; }.hbar-track { grid-column: 1 / -1; grid-row: 2; }.hbar-value { grid-column: 2; grid-row: 1; } footer { flex-direction: column; } }
 @media print { .sidebar,.toolbar,.mobile-menu,.quality-alert,.status-row,.table-tools { display:none!important; }.app-shell { display:block; }.main-content { padding:0; }.panel,.kpi-card { box-shadow:none; break-inside:avoid; }.dashboard-grid { gap:8px; }.kpi-grid { grid-template-columns:repeat(5,1fr); }.kpi-value { font-size:22px; } body { background:#fff; color:#111; } }
+
+/* CSV database uploader */
+.database-panel { display: grid; gap: 10px; margin-bottom: 22px; padding-bottom: 22px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.local-badge { padding: 3px 6px; border-radius: 999px; color: #9ce9de; background: rgba(45,212,191,.1); border: 1px solid rgba(94,234,212,.2); font-size: 8px; letter-spacing: .8px; }
+.upload-dropzone { width: 100%; min-height: 98px; display: grid; place-items: center; align-content: center; gap: 3px; padding: 12px; border: 1px dashed #3d655e; border-radius: 13px; background: rgba(255,255,255,.045); color: #dff7f1; transition: border-color .2s ease, background .2s ease, transform .2s ease; }
+.upload-dropzone:hover, .upload-dropzone.dragover { border-color: #5eead4; background: rgba(45,212,191,.1); transform: translateY(-1px); }
+.upload-dropzone.loading { opacity: .65; cursor: progress; }
+.upload-dropzone .upload-icon { display: grid; place-items: center; width: 29px; height: 29px; margin-bottom: 2px; border-radius: 9px; color: #071a18; background: var(--accent); font-size: 17px; font-weight: 900; }
+.upload-dropzone strong { font-size: 12px; }
+.upload-dropzone span:last-child { color: #91afa9; font-size: 9px; }
+.database-status { min-width: 0; display: grid; gap: 3px; padding: 10px 11px; border: 1px solid rgba(255,255,255,.08); border-radius: 11px; background: rgba(255,255,255,.035); }
+.database-status strong { overflow: hidden; color: #e8f8f4; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.database-status span { color: #91afa9; font-size: 9px; line-height: 1.45; }
+.database-status span.error { color: #fda4af; }
+.restore-button { width: 100%; padding: 8px 10px; border: 1px solid #31544e; border-radius: 10px; color: #9ce9de; background: transparent; font-size: 10px; font-weight: 700; }
+.restore-button:hover { border-color: #5eead4; background: rgba(45,212,191,.07); }
+.database-privacy { margin: 0; color: #84a39d; font-size: 8.5px; line-height: 1.55; }
+.column-help { color: #91afa9; font-size: 9px; }
+.column-help summary { color: #9ce9de; cursor: pointer; }
+.column-help p { margin: 7px 0 0; line-height: 1.55; }
+.action-button.upload-action { color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--surface)); border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--line)); box-shadow: none; }
+.action-button.upload-action:hover { background: color-mix(in srgb, var(--primary) 13%, var(--surface)); }
+button:disabled { opacity: .58; cursor: not-allowed; }
+.last-update { max-width: min(48vw, 620px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast.error { background: #7f1d1d; }

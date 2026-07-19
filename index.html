@@ -23,9 +23,32 @@
       </div>
 
       <div class="sidebar-copy">
-        <span class="year-badge">ปีข้อมูล 2568</span>
+        <span class="year-badge" id="dataYearBadge">ปีข้อมูล 2568</span>
         <p>Dashboard สำหรับติดตามการปล่อย GHG จากการเดินทางไป–กลับของพนักงาน</p>
       </div>
+
+      <section class="database-panel" aria-labelledby="databaseHeading">
+        <div class="filter-heading">
+          <span id="databaseHeading">ฐานข้อมูล Dashboard</span>
+          <span class="local-badge">LOCAL</span>
+        </div>
+        <input id="csvFileInput" type="file" accept=".csv,text/csv" hidden />
+        <button class="upload-dropzone" id="databaseDropzone" type="button">
+          <span class="upload-icon" aria-hidden="true">⇧</span>
+          <strong>อัปโหลดไฟล์ CSV</strong>
+          <span>คลิกเลือกไฟล์ หรือลากไฟล์มาวาง</span>
+        </button>
+        <div class="database-status">
+          <strong id="databaseName">ฐานข้อมูลเริ่มต้น</strong>
+          <span id="databaseMeta">กำลังโหลดข้อมูล…</span>
+        </div>
+        <button class="restore-button" id="restoreDefaultButton" type="button" hidden>กลับไปใช้ฐานข้อมูลเริ่มต้น</button>
+        <p class="database-privacy">ไฟล์ถูกประมวลผลภายใน Browser เท่านั้น ไม่ส่งไปยัง Server และไม่ถูกบันทึกหลังปิดหรือรีเฟรชหน้าเว็บ</p>
+        <details class="column-help">
+          <summary>รูปแบบคอลัมน์ที่รองรับ</summary>
+          <p>รองรับ CSV รูปแบบเดียวกับไฟล์ต้นฉบับ โดยต้องมีคอลัมน์ระยะทาง ประเภทยานพาหนะ และ Adjusted GHG เป็นอย่างน้อย</p>
+        </details>
+      </section>
 
       <div class="filter-panel">
         <div class="filter-heading">
@@ -71,6 +94,7 @@
         </div>
         <div class="toolbar">
           <button class="icon-button" id="themeToggle" type="button" title="สลับโหมดสี" aria-label="สลับโหมดสี">◐</button>
+          <button class="action-button upload-action" id="uploadButton" type="button">อัปโหลด CSV</button>
           <button class="action-button secondary" id="exportButton" type="button">ส่งออก CSV</button>
           <button class="action-button" id="printButton" type="button">พิมพ์รายงาน</button>
         </div>
@@ -78,7 +102,7 @@
 
       <section class="status-row">
         <div class="active-filter-text"><span class="pulse-dot"></span><span id="filterStatus">กำลังโหลดข้อมูล…</span></div>
-        <div class="last-update">Source: แบบสอบถามการเดินทางพนักงาน ปี 2568</div>
+        <div class="last-update" id="sourceLabel">Source: แบบสอบถามการเดินทางพนักงาน ปี 2568</div>
       </section>
 
       <section class="quality-alert" id="qualityAlert">
