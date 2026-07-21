@@ -16,6 +16,7 @@ const COLORS = ['#0f766e', '#84cc16', '#14b8a6', '#f59e0b', '#6366f1', '#ec4899'
 const MAX_CSV_SIZE_BYTES = 25 * 1024 * 1024;
 const qs = (id) => document.getElementById(id);
 const fmt = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 });
+const fmt2 = new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmt1 = new Intl.NumberFormat('th-TH', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const pct = (n) => `${fmt1.format(n)}%`;
 const sum = (rows, key) => rows.reduce((acc, r) => acc + (Number.isFinite(r[key]) ? r[key] : 0), 0);
@@ -67,6 +68,9 @@ const COLUMN_ALIASES = {
   distanceKm: ['ระยะทาง ไป-กลับ (หน่วย : กิโลเมตร)', 'distancekm', 'distance km', 'distance_km', 'round trip distance'],
   adjustedDistanceKm: ['ระยะทาง (km) (adj. carpool)', 'adjusteddistancekm', 'adjusted distance km', 'adjusted_distance_km'],
   workingDays: ['working day per year', 'workingdaysperyear', 'working days per year', 'working_days_per_year'],
+  fuelConsumption: ['fuel consumption per year (l or kg or kwh)', 'fuel consumption per year', 'fuelconsumptionperyear', 'annual fuel consumption'],
+  adjustedFuelConsumption: ['adj. (scale up) fuel consumption per year (l or kg or kwh)', 'adjusted fuel consumption per year', 'adjustedfuelconsumptionperyear', 'scale up fuel consumption'],
+  emissionFactor: ['ef_factor', 'ef factor', 'emission factor', 'emission_factor'],
   surveyGHG: ['ghg (tonco2e) from survey', 'surveyghg', 'survey ghg', 'survey_ghg', 'survey_ghg_tco2e', 'ghg from survey'],
   adjustedGHG: ['adj.(scale up) ghg (tonco2e)', 'adjustedghg', 'adjusted ghg', 'adjusted_ghg', 'adjusted_ghg_tco2e', 'scale up ghg']
 };
@@ -213,7 +217,10 @@ function convertCSVToRecords(parsed, filename) {
 
   const missingRequired = [];
   if (indexes.distanceKm < 0) missingRequired.push('ระยะทางไป-กลับ');
-  if (indexes.adjustedGHG < 0) missingRequired.push('Adjusted GHG');
+  const hasPreciseAdjustedInputs = indexes.adjustedFuelConsumption >= 0 && indexes.emissionFactor >= 0;
+  if (!hasPreciseAdjustedInputs && indexes.adjustedGHG < 0) {
+    missingRequired.push('Adjusted Fuel Consumption + EF_FACTOR หรือ Adjusted GHG');
+  }
   if (indexes.vehicle < 0 && indexes.mainMode < 0 && indexes.privateVehicle < 0 && indexes.publicVehicle < 0) {
     missingRequired.push('ประเภทยานพาหนะ/รูปแบบการเดินทาง');
   }
@@ -242,8 +249,17 @@ function convertCSVToRecords(parsed, filename) {
     const mainMode = rawMainMode || inferMainMode(vehicle);
     const rawDistance = parseNumber(getCell(row, indexes.distanceKm));
     const adjustedDistance = parseNumber(getCell(row, indexes.adjustedDistanceKm));
-    const surveyGHG = parseNumber(getCell(row, indexes.surveyGHG));
-    let adjustedGHG = parseNumber(getCell(row, indexes.adjustedGHG));
+    const fuelConsumption = parseNumber(getCell(row, indexes.fuelConsumption));
+    const adjustedFuelConsumption = parseNumber(getCell(row, indexes.adjustedFuelConsumption));
+    const emissionFactor = parseNumber(getCell(row, indexes.emissionFactor));
+    const surveyGHGFromColumn = parseNumber(getCell(row, indexes.surveyGHG));
+    const adjustedGHGFromColumn = parseNumber(getCell(row, indexes.adjustedGHG));
+    const surveyGHG = Number.isFinite(fuelConsumption) && Number.isFinite(emissionFactor)
+      ? fuelConsumption * emissionFactor / 1000
+      : surveyGHGFromColumn;
+    let adjustedGHG = Number.isFinite(adjustedFuelConsumption) && Number.isFinite(emissionFactor)
+      ? adjustedFuelConsumption * emissionFactor / 1000
+      : adjustedGHGFromColumn;
     const isWalking = /เดินเท้า|walk/i.test(`${mainMode} ${vehicle}`);
 
     if (!Number.isFinite(rawDistance)) invalidDistanceRows += 1;
@@ -269,6 +285,9 @@ function convertCSVToRecords(parsed, filename) {
       adjustedDistanceKm: Number.isFinite(adjustedDistance)
         ? adjustedDistance
         : (Number.isFinite(rawDistance) ? rawDistance : 0),
+      fuelConsumption,
+      adjustedFuelConsumption,
+      emissionFactor,
       surveyGHG,
       adjustedGHG,
       ghgStatus: Number.isFinite(adjustedGHG)
@@ -292,7 +311,9 @@ function convertCSVToRecords(parsed, filename) {
       uploadedFilename: filename,
       delimiter: parsed.delimiter === '\t' ? 'TAB' : parsed.delimiter,
       privacy: 'Name, email and detailed affiliation columns are ignored during browser-side processing.',
-      methodNote: 'Main KPI uses the Adjusted GHG column supplied in the uploaded CSV. Walking with a blank value is treated as 0 tCO2e; other blank Adjusted GHG values are excluded from totals.'
+      methodNote: hasPreciseAdjustedInputs
+        ? 'Adjusted GHG is recalculated as ADJ. (SCALE UP) FUEL CONSUMPTION PER YEAR × EF_FACTOR ÷ 1000. The rounded Adjusted GHG column is used only as a fallback.'
+        : 'Main KPI uses the Adjusted GHG column supplied in the uploaded CSV because precise fuel-consumption and emission-factor inputs were not both available. Walking with a blank value is treated as 0 tCO2e.'
     }
   };
 }
@@ -426,7 +447,7 @@ function renderQuality() {
       ${railMissing ? `<li>ในจำนวนที่ไม่มีค่า เป็น BTS/MRT: <strong>${fmt.format(railMissing)}</strong> รายการ</li>` : ''}
       ${invalidDistanceRows ? `<li>ระยะทางที่อ่านเป็นตัวเลขไม่ได้และกำหนดเป็น 0 km ในไฟล์ที่อัปโหลด: <strong>${fmt.format(invalidDistanceRows)}</strong> แถว</li>` : ''}
     </ul>
-    <p>ค่า KPI หลักใช้คอลัมน์ <strong>ADJ.(SCALE UP) GHG (TonCO2e)</strong> หรือคอลัมน์ Adjusted GHG ที่เทียบเท่าในไฟล์ CSV</p>
+    <p>ค่า KPI หลักคำนวณจาก <strong>ADJ. (SCALE UP) FUEL CONSUMPTION PER YEAR × EF_FACTOR ÷ 1,000</strong> เมื่อมีคอลัมน์ครบ และใช้คอลัมน์ Adjusted GHG เป็นค่า fallback เท่านั้น</p>
     <p>${escapeHtml(state.meta.methodNote || 'Dashboard ใช้ค่าที่คำนวณมาแล้วจากฐานข้อมูล โดยไม่คำนวณ Emission Factor เพิ่มในหน้าเว็บไซต์')}</p>
     ${state.source.kind === 'upload' ? '<p><strong>Privacy:</strong> ไฟล์ CSV ถูกอ่านและประมวลผลใน Browser ของผู้ใช้เท่านั้น ชื่อ อีเมล และคอลัมน์ที่ไม่ใช้จะไม่ถูกเก็บในตัวแปรข้อมูลของ Dashboard</p>' : ''}`;
 }
@@ -435,7 +456,7 @@ function renderKPIs() {
   const rows = state.filtered;
   const adjusted = sum(rows, 'adjustedGHG');
   const survey = sum(rows, 'surveyGHG');
-  qs('totalAdjustedGHG').textContent = fmt.format(adjusted);
+  qs('totalAdjustedGHG').textContent = fmt2.format(adjusted);
   qs('surveyGHG').textContent = fmt.format(survey);
   qs('respondents').textContent = fmt.format(rows.length);
   qs('avgDistance').textContent = fmt1.format(mean(rows, 'distanceKm'));
@@ -457,7 +478,7 @@ function renderModeDonut() {
     cursor += degrees;
   });
   qs('modeDonut').style.background = total ? `conic-gradient(${segments.join(',')})` : 'var(--line)';
-  qs('donutTotal').textContent = fmt.format(total);
+  qs('donutTotal').textContent = fmt2.format(total);
   qs('modeLegend').innerHTML = data.map((item, index) => `
     <div class="legend-item">
       <span class="legend-dot" style="background:${COLORS[index % COLORS.length]}"></span>
@@ -666,9 +687,12 @@ function restoreDefaultDatabase() {
 
 async function init() {
   try {
-    const response = await fetch('./data/commuting.json');
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
+    const embeddedData = window.__COMMUTING_DATA__;
+    const data = embeddedData || await (async () => {
+      const response = await fetch('./data/commuting.json');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })();
     state.defaultMeta = data.meta;
     state.defaultRecords = data.records;
     setDatabase(data.records, data.meta, { kind: 'default', name: 'แบบสอบถามการเดินทางพนักงาน ปี 2568' });

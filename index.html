@@ -46,7 +46,7 @@
         <p class="database-privacy">ไฟล์ถูกประมวลผลภายใน Browser เท่านั้น ไม่ส่งไปยัง Server และไม่ถูกบันทึกหลังปิดหรือรีเฟรชหน้าเว็บ</p>
         <details class="column-help">
           <summary>รูปแบบคอลัมน์ที่รองรับ</summary>
-          <p>รองรับ CSV รูปแบบเดียวกับไฟล์ต้นฉบับ โดยต้องมีคอลัมน์ระยะทาง ประเภทยานพาหนะ และ Adjusted GHG เป็นอย่างน้อย</p>
+          <p>รองรับ CSV รูปแบบเดียวกับไฟล์ต้นฉบับ โดยควรมีระยะทาง ประเภทยานพาหนะ ADJ. (SCALE UP) FUEL CONSUMPTION PER YEAR และ EF_FACTOR เพื่อคำนวณค่า GHG แบบเต็มทศนิยม หรือมีคอลัมน์ Adjusted GHG สำหรับใช้เป็นค่า fallback</p>
         </details>
       </section>
 
@@ -206,7 +206,7 @@
       </section>
 
       <footer>
-        <div><strong>GHG Scope 3 — Category 7: Employee Commuting</strong><p>Dashboard นี้ใช้ค่าที่คำนวณมาแล้วจากไฟล์ต้นทาง และไม่เผยแพร่ข้อมูลส่วนบุคคล</p></div>
+        <div><strong>GHG Scope 3 — Category 7: Employee Commuting</strong><p>Dashboard คำนวณ Adjusted GHG จากปริมาณเชื้อเพลิงหลัง Scale Up × EF_FACTOR ÷ 1,000 และไม่เผยแพร่ข้อมูลส่วนบุคคล</p></div>
         <div class="footer-note">Working days: <span id="workingDays">242</span> วัน/ปี</div>
       </footer>
     </main>
